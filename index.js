@@ -1,5 +1,6 @@
 var osmosis = require('osmosis');
 var URL = require('url');
+var fs = require('fs');
 
 if (process.argv.length < 4) {
     console.log("USAGE: node index.js <USER ID> <PASSWORD>");
@@ -11,7 +12,7 @@ osmosis
 .find("a")
 .contains("Password")
 .follow('@href')
-.then(function(context, data) {
+.then(function(context, data, next) {
     var url = URL.resolve(context.doc().request.url, 'login');
     console.log("Logging in");
     var method = 'POST';
@@ -34,11 +35,26 @@ osmosis
     }
     console.log(params);
     this.request(method, url, params, function(c) {
-        console.log("BOOM!");
         console.log(c.get('td.last > font').text());
+        next(c, data);
+    });
+})
+.set({'balance': 'td.last > font'})
+.data(function(result) {
+    result.balance = result.balance.replace('.',',');
+    result.balance = setCharAt(result.balance, result.balance.length - 4, '.');
+    console.log(result);
+    fs.writeFile("/home/avnerus/Dropbox/Public/balance.json", JSON.stringify(result), function(err) {
+        if(err) {
+            return console.log("Error writing to file", err);
+        }
+        console.log("Saved to file");
     });
 })
 .log(console.log)
-.debug(console.log)
 .error(console.log)
 
+function setCharAt(str,index,chr) {
+        if(index > str.length-1) return str;
+            return str.substr(0,index) + chr + str.substr(index+1);
+}
